@@ -1,0 +1,99 @@
+const INTERVAL = 65 * 1000; // Lower intervals increase creation speed but also ban risk significantly.
+const DELETE_DELAY = 4 * 1000; // 2 seconds delay before deleting
+const SERVER_NAME = "https://discord.gg/projectunban"; // Name of the server to create
+
+/// DO NOT EDIT BELOW THIS LINE ///
+function murmurhash3_32_gc(e, _) {
+  let $ = (_ = _ || 0),
+    c,
+    l = new TextEncoder(),
+    t = l.encode(e),
+    u = t.length,
+    i = Math.floor(u / 4),
+    m = new DataView(t.buffer, t.byteOffset);
+  for (let b = 0; b < i; b++) {
+    let n = 4 * b;
+    ($ ^= c =
+      Math.imul(
+        (c =
+          ((c = Math.imul((c = m.getUint32(n, !0)), 3432918353)) << 15) |
+          (c >>> 17)),
+        461845907
+      )),
+      ($ = Math.imul(($ = ($ << 13) | ($ >>> 19)), 5) + 3864292196),
+      ($ >>>= 0);
+  }
+  c = 0;
+  let f = 4 * i;
+  switch (3 & u) {
+    case 3:
+      c ^= t[f + 2] << 16;
+    case 2:
+      c ^= t[f + 1] << 8;
+    case 1:
+      (c ^= t[f + 0]),
+        ($ ^= c =
+          Math.imul(
+            (c = ((c = Math.imul(c, 3432918353)) << 15) | (c >>> 17)),
+            461845907
+          ));
+  }
+  return (
+    ($ ^= u),
+    ($ ^= $ >>> 16),
+    ($ = Math.imul($, 2246822507)),
+    ($ ^= $ >>> 13),
+    ($ = Math.imul($, 3266489909)),
+    ($ ^= $ >>> 16) >>> 0
+  );
+}
+
+const deleteGuild = findByProps(
+  "deleteGuild",
+  "bulkAddMemberRoles"
+).deleteGuild;
+const createGuildFromTemplate = findByProps(
+  "createGuildFromTemplate"
+).createGuildFromTemplate;
+
+let t = setInterval(async () => {
+  console.log("Attempting to create a new guild...");
+  const newGuild = await createGuildFromTemplate(
+    SERVER_NAME,
+    null,
+    {
+      id: "CREATE",
+      label: "Create My Own",
+      channels: [],
+      system_channel_id: null,
+    },
+    false,
+    false
+  );
+
+  if (!newGuild || !newGuild.id) {
+    console.error("Failed to create guild.");
+    return;
+  }
+
+  console.log(`Guild created: ${newGuild.name} (ID: ${newGuild.id})`);
+
+  // https://nelly.tools/experiments/1984074768
+  let hash = murmurhash3_32_gc(`2025-02_skill_trees:${newGuild.id}`) % 10000;
+  if (hash >= 10 && hash < 20) {
+    console.log(
+      `🎉 FOUND GUILD WITH TAG: ${newGuild.name} (ID: ${newGuild.id}) 🎉`
+    );
+    clearInterval(t);
+    console.log("Stopping script as a guild with tags has been found.");
+  } else {
+    console.log(
+      `Guild (ID: ${newGuild.id}) does not have the tag experiment. Scheduling deletion...`
+    );
+    setTimeout(async () => {
+      console.log(`Deleting guild: ${newGuild.name} (ID: ${newGuild.id})`);
+      await deleteGuild(newGuild.id);
+      console.log(`Guild (ID: ${newGuild.id}) deleted.`);
+    }, DELETE_DELAY);
+  }
+}, INTERVAL);
